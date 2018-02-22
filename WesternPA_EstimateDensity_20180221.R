@@ -9,14 +9,14 @@
 
 ## @@@@ USER INPUT REQUIRED HERE @@@@
 # set working directory (where your scripts are stored)
-setwd("E:/Dropbox (PNHP @ WPC)/2018_ShaleGas_Analysis")
+setwd("E:/Dropbox (PNHP @ WPC)/2018_ShaleGas_Analysis/ShaleGasBird")
 
 # read in source code with functions
 source("WesternPA_Density_Functions.R")
 
 ## @@@@ USER INPUT REQUIRED HERE @@@@
 # define the path to where your input and output data files are stored
-pathtofiles <- "E:/Dropbox (PNHP @ WPC)/2018_ShaleGas_Analysis/"
+pathtofiles <- "E:/Dropbox (PNHP @ WPC)/2018_ShaleGas_Analysis/2018data/"
 
 library(detect)
 
@@ -93,7 +93,7 @@ colnames(ptctTot) <- c("uniqueID", "TotSing")
 rawdat2 <- merge(ptctTot, rawdat, by.x=c("uniqueID"), by.y=c("uniqueID"))
 
 # write cleaned file to csv
-write.csv(rawdat2, file=paste(pathtofiles,"WPARawData_JDate_TSLR_Cleaned_BothVisits.csv", sep=""))
+write.csv(rawdat2, file=paste(pathtofiles,"bird_veg_2017xy_JDate_TSLR_Cleaned.csv", sep=""))
 
 # scroll through by point, keep only the data from the survey visit with the highest counts
 rawdat2$specpt <- paste(rawdat2$elem_name, rawdat2$pt_id, sep=".") # add field with unique combo of species and point
@@ -124,11 +124,11 @@ speclist <- unique(rawdatsv$elem_name)
 for (s in speclist){
   temp <- subset(rawdatsv, rawdatsv$elem_name==s)
   misspt <- unique(rawdatsv$pt_id[which(!(rawdatsv$pt_id %in% temp$pt_id))])
-  zeropts <- rbind(zeropts, data.frame(pt_id=misspt, elem_name=rep(s, length(misspt)), TotSing=rep(0, length(misspt)), distance=rep(0, length(misspt)), sing03=rep(0, length(misspt)), sing35=rep(0, length(misspt)), sing510=rep(0, length(misspt)), specpt=paste(s,misspt,sep=".")))
+  zeropts <- rbind(zeropts, data.frame(pt_id=misspt, elem_name=rep(s, length(misspt)), TotSing=rep(0, length(misspt)), distance=rep(0, length(misspt)), sing03=rep(0, length(misspt)), sing35=rep(0, length(misspt)), specpt=paste(s,misspt,sep="."))) ## CT - added Sing510    sing510=rep(0, length(misspt)), 
 }
 
 # merge with rawdat to fill in other columns
-zerodat <- merge(zeropts, rawdatsv[!duplicated(rawdatsv$pt_id),c(1,3:15,19,20:127)], by.x="pt_id", by.y="pt_id",all.x=T, all.y=F)
+zerodat <- merge(zeropts, rawdatsv[!duplicated(rawdatsv$pt_id),c(1,3:15,19,21:125)], by.x="pt_id", by.y="pt_id",all.x=T, all.y=F)
 
 
 # combine zero data with count data
@@ -136,7 +136,7 @@ cleandat <- rbind(rawdatsv, zerodat)
 cleandat$uniqueID <- NULL
 
 # write compiled, cleaned file to csv
-write.csv(cleandat, file=paste(pathtofiles,"WPARawData_JDate_TSLR_Cleaned_1Visit_Zeroes.csv", sep=""))
+write.csv(cleandat, file=paste(pathtofiles,"bird_veg_2017xy_JDate_TSLR_Cleaned_Zeroes.csv", sep=""))
 
 
 ##############################################################################################
@@ -145,7 +145,7 @@ write.csv(cleandat, file=paste(pathtofiles,"WPARawData_JDate_TSLR_Cleaned_1Visit
 
 # create total count dataset for GLMM with a single record for each point (remove extra distance bands)
 ptctTot <- cleandat[!(duplicated(cleandat$specpt)),]
-write.csv(ptctTot, file=paste(pathtofiles,"WPAData_TotalBySpeciesPointSurvey.csv", sep=""))
+write.csv(ptctTot, file=paste(pathtofiles,"bird_veg_2017xy_TotalBySpeciesPointSurvey.csv", sep=""))
 
 
 # make removal data file (counts by time, collapsed across distance)
