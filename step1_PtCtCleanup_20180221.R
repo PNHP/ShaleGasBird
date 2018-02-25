@@ -24,8 +24,19 @@ library(detect)
 ## read in data and calculate covariates (Jdate, time since local sunrise) 
 ## @@@@ ONLY RUN THIS SECTION ON NEW DATASETS. COMPLETE FOR 2015!! @@@@
 
-rawdat <- read.csv(file=paste(pathtofiles,"bird_veg_2017xy.csv",sep=""))
+#get a list of what's in the directory
+fileList <- dir(pathtofiles, pattern = ".csv$")
+fileList
 
+#look at the output and choose which shapefile you want to run
+#enter its location in the list (first = 1, second = 2, etc)
+n <- 13
+
+# load data, QC ----
+fileName <- fileList[[n]]
+csvName <- strsplit(fileName,"\\.")[[1]][[1]]
+
+rawdat <- read.csv(file=paste(pathtofiles,fileName,sep=""))
 
 # convert date to jdate
 rawdat$Jdate <- as.POSIXlt(rawdat$date_start, format="%m/%d/%Y")$yday+1
@@ -52,7 +63,6 @@ rawdat$starttime <- as.numeric(substr(rawdat$time_start, 0, nchar(rawdat$time_st
 
 # calculate time since local sunrise
 rawdat$tslr <- rawdat$starttime - rawdat$Sunrise
-
 
 ##############################################################################################
 ## clean the data, remove unidentified species, keep only the survey visit with the highest count,
@@ -83,17 +93,17 @@ rawdat <- rawdat[which(!(rawdat$elem_name=="UNWO")),]
 rawdat$elem_name <- factor(rawdat$elem_name) # reset the factor list
 speclist <- unique(rawdat$elem_name) # get CSWAsed speclist
 
-
 # add uniqueID field (unique by pt, spp, survey visit)
 rawdat$uniqueID <- paste(rawdat$pt_id, rawdat$survey_vis, rawdat$elem_name, sep=".")
 
 # get total count for each species * point * survey visit combination, summarized across distance bands
-ptctTot <- ddply(rawdat, "uniqueID", summarize, sum(sing03 + sing35))
+ptctTot <- ddply(rawdat, "uniqueID", summarize, sum(sing03 + sing35 + sing510))
 colnames(ptctTot) <- c("uniqueID", "TotSing")
 rawdat2 <- merge(ptctTot, rawdat, by.x=c("uniqueID"), by.y=c("uniqueID"))
 
 # write cleaned file to csv
-write.csv(rawdat2, file=paste(pathtofiles,"bird_veg_2017xy_JDate_TSLR_Cleaned.csv", sep=""))
+outFileName <- paste(csvName, "_JDate_TSLR_Cleaned.csv", sep="")
+write.csv(rawdat2, file=paste(pathtofiles,outFileName, sep=""))
 
 # scroll through by point, keep only the data from the survey visit with the highest counts
 rawdat2$specpt <- paste(rawdat2$elem_name, rawdat2$pt_id, sep=".") # add field with unique combo of species and point
@@ -124,18 +134,19 @@ speclist <- unique(rawdatsv$elem_name)
 for (s in speclist){
   temp <- subset(rawdatsv, rawdatsv$elem_name==s)
   misspt <- unique(rawdatsv$pt_id[which(!(rawdatsv$pt_id %in% temp$pt_id))])
-  zeropts <- rbind(zeropts, data.frame(pt_id=misspt, elem_name=rep(s, length(misspt)), TotSing=rep(0, length(misspt)), distance=rep(0, length(misspt)), sing03=rep(0, length(misspt)), sing35=rep(0, length(misspt)), specpt=paste(s,misspt,sep="."))) ## CT - added Sing510    sing510=rep(0, length(misspt)), 
+  zeropts <- rbind(zeropts, data.frame(pt_id=misspt, elem_name=rep(s, length(misspt)), TotSing=rep(0, length(misspt)), distance=rep(0, length(misspt)), sing03=rep(0, length(misspt)), sing35=rep(0, length(misspt)), sing510=rep(0, length(misspt)),specpt=paste(s,misspt,sep="."))) ## CT - added Sing510    sing510=rep(0, length(misspt)), 
 }
+# find which fields should be removed from rawdatsv
+zeroNames <- names(zeropts)
+zeroNames <- zeroNames[zeroNames!="pt_id"] # keep pt_id since the merge is done on that
 
 # merge with rawdat to fill in other columns
-zerodat <- merge(zeropts, rawdatsv[!duplicated(rawdatsv$pt_id),c(1,3:15,19,21:125)], by.x="pt_id", by.y="pt_id",all.x=T, all.y=F)
-
+zerodat <- merge(zeropts, rawdatsv[!duplicated(rawdatsv$pt_id),!(names(rawdatsv)%in%zeroNames)], by.x="pt_id", by.y="pt_id",all.x=T, all.y=F) #c(1,3:15,19,21:125)]
 
 # combine zero data with count data
 cleandat <- rbind(rawdatsv, zerodat)
 cleandat$uniqueID <- NULL
 
 # write compiled, cleaned file to csv
-write.csv(cleandat, file=paste(pathtofiles,"bird_veg_2017xy_JDate_TSLR_Cleaned_Zeroes.csv", sep=""))
-
-
+outFileName <- paste(csvName, "_JDate_TSLR_Cleaned_Zeroes.csv", sep="")
+write.csv(cleandat, file=paste(pathtofiles,outFileName, sep=""))
